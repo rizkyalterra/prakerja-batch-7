@@ -1,3 +1,4 @@
 Ini dari remote
 Ini dari perubahan clone
 Ini perubahan dari clone B
+Ini perubahan dari remote A
