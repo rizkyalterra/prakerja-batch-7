@@ -5,12 +5,14 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
-type Products struct {
+type Products struct { 
 	Id int `json:"id"`
-	Name string `json:"name"`
-	Price int `json:"price"`
+	Name string `json:"name"` 
+	Price int `json:"price"` 
 }
 
 type BaseResponse struct {
@@ -20,6 +22,7 @@ type BaseResponse struct {
 }
 
 func main(){
+	connectDatabase()
 	e := echo.New()
 	e.GET("/products", GetProductController)
 	e.POST("/products", AddProductController)
@@ -27,14 +30,41 @@ func main(){
 	e.Start(":8000")
 }
 
+var DB *gorm.DB
+
+func connectDatabase(){
+	dsn := "root:123ABC4d.@tcp(127.0.0.1:3306)/prakerja7?charset=utf8mb4&parseTime=True&loc=Local"
+	var err error
+	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		panic("failed connect into database")
+	}
+	migration()
+}
+
+func migration(){
+	DB.AutoMigrate(&Products{})
+
+}
+
 func AddProductController(c echo.Context) error{
 
 	var product Products
 	c.Bind(&product)
+
+	result := DB.Create(&product)
+	
+	if result.Error != nil {
+		return c.JSON(http.StatusInternalServerError, BaseResponse{
+			Status: false,
+			Message: "Failed create product into database",
+			Data: nil,
+		})
+	}
 	
 	return c.JSON(http.StatusCreated, BaseResponse{
 		Status: true,
-		Message: "Berhasil Ditambahkan",
+		Message: "Success add data product",
 		Data: product,
 	})
 }
@@ -42,7 +72,7 @@ func AddProductController(c echo.Context) error{
 func GetDetailProductController(c echo.Context) error{
 
 	id, _ := strconv.Atoi(c.Param("id"))
-	
+
 	product := Products{id, "Baju", 10000}
 	
 	return c.JSON(http.StatusOK, BaseResponse{
@@ -53,16 +83,19 @@ func GetDetailProductController(c echo.Context) error{
 }
 
 func GetProductController(c echo.Context) error{
-	country := c.QueryParam("country")
-	harga := c.QueryParam("harga")
-	
+
 	var dataProducts []Products
 	
-	product := Products{1, country, 10000}
-	dataProducts = append(dataProducts, product)
-	product = Products{2, harga, 10000}
-	dataProducts = append(dataProducts, product)
+	result := DB.Find(&dataProducts)
 	
+	if result.Error != nil {
+		return c.JSON(http.StatusInternalServerError, BaseResponse{
+			Status: false,
+			Message: "Failed get product from database",
+			Data: nil,
+		})
+	}
+
 	return c.JSON(http.StatusOK, BaseResponse{
 		Status: true,
 		Message: "Berhasil",
